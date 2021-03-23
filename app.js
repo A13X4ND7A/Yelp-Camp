@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require("path");
 const mongoose = require('mongoose');
+const ejsMate = require('ejs-mate');
 const methodOverride = require('method-override');
 const Campground = require('./models/campground');
 const campground = require('./models/campground');
@@ -21,7 +22,7 @@ db.once("open", () => {
 
 const app = express();
 
-
+app.engine('ejs', ejsMate);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views')) //SETS THE DEFAULT DIRECTORY FOR PAGES TO VIEWS
 app.use(express.urlencoded({extended: true})); //ALLOWS US TO PARSE THE DATA FROM A POST REQUEST AND DISPLAY 
