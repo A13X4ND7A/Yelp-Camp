@@ -2,13 +2,13 @@ const express = require('express');
 const path = require("path");
 const mongoose = require('mongoose');
 const ejsMate = require('ejs-mate');
-const joi = require('joi');
+const {campgroundSchema} = require('./schemas.js');
 const catchAsync = require('./utils/catchAsync');
 const ExpressError = require('./utils/ExpressError');
 const methodOverride = require('method-override');
 const Campground = require('./models/campground');
-const campground = require('./models/campground');
-const Joi = require('joi');
+
+
 
 //CONNECTING TO THE DATABASE
 mongoose.connect("mongodb://localhost:27017/yelp-camp", {
@@ -33,7 +33,16 @@ app.use(express.urlencoded({extended: true})); //ALLOWS US TO PARSE THE DATA FRO
 app.use(methodOverride('_method')); // ALLOWS YOU TO USE EXTRA HTTP VERBS 
 
 
-//NOTE TO SELF, THE ORDER OF THESE ROUTES CAN MATTER!!!!!!!!
+const validateCampground = (req, res, next) => {
+    const { error } = campgroundSchema.validate(req.body);
+    if (error) {
+        //map over the errors and make a single string message
+      const msg = error.details.map((el) => el.message).join(",");
+      throw new ExpressError(msg, 400);
+    }else {
+        next();
+    }
+}
 
 app.get('/', (req, res) => {
     res.render('home')
@@ -48,27 +57,16 @@ app.get('/campgrounds/new', (req, res) => {
   res.render('campgrounds/new'); //renders the page for the new campground
 });
 
-app.post('/campgrounds', catchAsync(async (req,res, next) => {
+app.post(
+  "/campgrounds",
+  validateCampground, catchAsync(async (req, res, next) => {
     // if(!req.body.campground) throw new ExpressError('Invalid Campground Data', 400)
-    const campgroundSchema = Joi.object({
-        campground: Joi.object({
-            title: Joi.string().required(),
-            price: Joi.number().required().min(0),
-            image: Joi.string().required(),
-            location: Joi.string().required(),
-            description: Joi.string().required()
-        }).required()
-    })
-    const { error } = campgroundSchema.validate(req.body);
-   if(error){
-       const msg = error.details.map(el => el.message).join(',')
-       throw new ExpressError(msg, 400);
 
-   }
-    const campground = new Campground(req.body.campground)
+    const campground = new Campground(req.body.campground);
     await campground.save(); //saves the new campground to the db
-    res.redirect(`/campgrounds/${campground._id}`)//redirects is to the campground id that was just created
-}));
+    res.redirect(`/campgrounds/${campground._id}`); //redirects is to the campground id that was just created
+  })
+);
 
 app.get('/campgrounds/:id', catchAsync(async (req, res) => {
     const campground = await Campground.findById(req.params.id); //find the campground by the id
@@ -82,11 +80,16 @@ app.get('/campgrounds/:id/edit', catchAsync(async (req, res) => {
 }));
 
 //A PUT REQUEST (METHOD-OVERRIDE ALLOWS US TO USE THIS) TO FIND THE REQUIRED CAMPGROUND AND UPDATE IT.
-app.put('/campgrounds/:id', catchAsync(async(req,res) => {
-    const {id} = req.params
-    const campground = await Campground.findByIdAndUpdate(id, {...req.body.campground})
-    res.redirect(`/campgrounds/${campground._id}`)
-}));
+app.put(
+  "/campgrounds/:id",
+  validateCampground, catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const campground = await Campground.findByIdAndUpdate(id, {
+      ...req.body.campground,
+    });
+    res.redirect(`/campgrounds/${campground._id}`);
+  })
+);
 
 //ALLOWS THE USER TO DELETE THE CAMPGROUND AND REDIRECTS BACK TO THE MAIN ALL CAMPGROUNDS PAGE
 app.delete('/campgrounds/:id', catchAsync(async (req, res) => {
