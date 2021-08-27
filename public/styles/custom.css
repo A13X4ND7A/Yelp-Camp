@@ -1,0 +1,13 @@
+.btn-secondary,
+.btn-secondary:hover {
+	color: #333;
+	text-shadow: none;
+}
+
+.addCamp {
+	margin: 10px 0;
+}
+.addCamp a {
+	text-decoration: none;
+	color: #fff;
+}
